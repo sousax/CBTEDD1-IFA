@@ -1,204 +1,77 @@
 #include <iostream>
-#include <locale.h>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 using namespace std;
 
-struct No {
-    int dado;
-    No *prox;
-};
+// Função para transformar um nome no formato de citação bibliográfica
+string transformarNome(const string& nome) {
+    string nomeFormatado;
+    istringstream ss(nome);
+    string parte;
+    vector<string> partes;
 
-struct Fila {
-    No *ini;
-    No *fim;
-};
-
-Fila* init() {
-    Fila *f = new Fila;
-    f->ini = NULL;
-    f->fim = NULL;
-    return f;
-}
-
-bool isEmpty(Fila *f) {
-    return (f->ini == NULL);
-}
-
-void enqueue(Fila *f, int v) {
-    No *no = new No;
-    no->dado = v;
-    no->prox = NULL;
-    if (isEmpty(f)) {
-        f->ini = no;
-    } else {
-        f->fim->prox = no;
+    // Divide o nome em partes separadas por espaços
+    while (ss >> parte) {
+        partes.push_back(parte);
     }
-    f->fim = no;
-}
 
-int dequeue(Fila *f) {
-    if (isEmpty(f)) {
-        return -1;  // Indicando que a fila está vazia
+    // Se não há partes suficientes, retorna o nome original
+    if (partes.size() < 2) {
+        return nome;
     }
-    No *no = f->ini;
-    int ret = no->dado;
-    f->ini = no->prox;
-    if (f->ini == NULL) {
-        f->fim = NULL;
+
+    // Adiciona o último sobrenome em maiúsculas seguido por vírgula
+    string ultimoSobrenome = partes.back();
+    for (size_t i = 0; i < ultimoSobrenome.size(); ++i) {
+        ultimoSobrenome[i] = toupper(ultimoSobrenome[i]);
     }
-    delete no;
-    return ret;
-}
+    nomeFormatado += ultimoSobrenome + ", ";
 
-int count(Fila *f) {
-    int qtde = 0;
-    No *no = f->ini;
-    while (no != NULL) {
-        qtde++;
-        no = no->prox;
+    // Adiciona o primeiro nome sem abreviação
+    string primeiroNome = partes.front();
+    primeiroNome[0] = toupper(primeiroNome[0]); // Primeira letra do primeiro nome em maiúscula
+    nomeFormatado += primeiroNome;
+
+    // Adiciona as iniciais abreviadas dos sobrenomes do meio
+    for (size_t i = 1; i < partes.size() - 1; ++i) {
+        nomeFormatado += ' ';
+        nomeFormatado += toupper(partes[i][0]);
+        nomeFormatado += ".";
     }
-    return qtde;
-}
 
-void print(Fila *f) {
-    No *no = f->ini;
-    cout << "-- Qtde de elementos: " << count(f) << endl;
-    while (no != NULL) {
-        cout << no->dado << endl;
-        no = no->prox;
-    }
-}
+    nomeFormatado += " "; // Adiciona um espaço no final
 
-void freeFila(Fila *f) {
-    No *no = f->ini;
-    while (no != NULL) {
-        No *temp = no->prox;
-        delete no;
-        no = temp;
-    }
-    delete f;
-}
-
-struct Guiche {
-    int id;
-    Fila *senhasAtendidas;
-};
-
-vector<Guiche> guiches;
-
-Guiche* findGuiche(int id) {
-    for (size_t i = 0; i < guiches.size(); i++) {
-        if (guiches[i].id == id) {
-            return &guiches[i];
-        }
-    }
-    return NULL;
-}
-
-void abrirGuiche(int id) {
-    Guiche guiche;
-    guiche.id = id;
-    guiche.senhasAtendidas = init();
-    guiches.push_back(guiche);
-    cout << "Guichê " << id << " aberto." << endl;
-}
-
-void listarSenhasAtendidas(int id) {
-    Guiche *guiche = findGuiche(id);
-    if (guiche != NULL) {
-        cout << "Senhas atendidas pelo guichê " << id << ":" << endl;
-        print(guiche->senhasAtendidas);
-    } else {
-        cout << "Guichê " << id << " não encontrado." << endl;
-    }
+    return nomeFormatado;
 }
 
 int main() {
-    setlocale(LC_ALL, "");
-    Fila *senhasGeradas = init();
-    int opcao;
-    int senha = 0;
-
-    do {
-        string line(40, '-');
-        cout << line << endl;
-        cout << "0. Sair" << endl;
-        cout << "1. Gerar senha" << endl;
-        cout << "2. Abrir guichê" << endl;
-        cout << "3. Realizar atendimento" << endl;
-        cout << "4. Listar senhas atendidas" << endl;
-        cout << "Opção: ";
-        cin >> opcao;
-
-        if (opcao == 0 && !isEmpty(senhasGeradas)) {
-            cout << "Ainda há senhas aguardando atendimento. Não é possível sair." << endl;
-            opcao = -1;  // Faz com que o loop continue
-        }
-
-        int idGuiche;  // Declarar a variável idGuiche uma vez
-
-        switch (opcao) {
-            case 0:
-                cout << line << endl;
-                cout << "Encerrando programa...\n";
-                int totalAtendidas = 0;
-                for (size_t i = 0; i < guiches.size(); i++) {
-                    totalAtendidas += count(guiches[i].senhasAtendidas);
-                }
-                cout << "Total de senhas atendidas: " << totalAtendidas << endl;
-                break;
-            case 1: 
-                cout << line << endl;
-                senha++;
-                enqueue(senhasGeradas, senha);
-                cout << "Senha gerada: " << senha << endl;
-                cout << "Senhas aguardando atendimento: " << count(senhasGeradas) << endl;
-                cout << "Número de guichês abertos: " << guiches.size() << endl;
-                break;
-            case 2: 
-                cout << line << endl;
-                cout << "Digite o ID do guichê a ser aberto: ";
-                cin >> idGuiche;
-                abrirGuiche(idGuiche);
-                cout << "Senhas aguardando atendimento: " << count(senhasGeradas) << endl;
-                cout << "Número de guichês abertos: " << guiches.size() << endl;
-                break;
-            case 3: 
-                cout << line << endl;
-                if (isEmpty(senhasGeradas)) {
-                    cout << "Nenhuma senha para atender." << endl;
-                    break;
-                }
-                cout << "Digite o ID do guichê: ";
-                cin >> idGuiche;
-                Guiche *guiche = findGuiche(idGuiche);
-                if (guiche != nullptr) {
-                    int senhaAtendida = dequeue(senhasGeradas);
-                    enqueue(guiche->senhasAtendidas, senhaAtendida);
-                    cout << "Senha atendida: " << senhaAtendida << endl;
-                } else {
-                    cout << "Guichê " << idGuiche << " não encontrado." << endl;
-                }
-                cout << "Senhas aguardando atendimento: " << count(senhasGeradas) << endl;
-                cout << "Número de guichês abertos: " << guiches.size() << endl;
-                break;
-            case 4: 
-                cout << line << endl;
-                cout << "Digite o ID do guichê: ";
-                cin >> idGuiche;
-                listarSenhasAtendidas(idGuiche);
-                break;
-            default:
-                cout << "Opção inválida. Tente novamente." << endl;
-        }
-
-    } while (opcao != 0 || !isEmpty(senhasGeradas));
-
-    freeFila(senhasGeradas);
-    for (auto& guiche : guiches) {
-        freeFila(guiche.senhasAtendidas);
+    ifstream arquivoEntrada("nomes.txt");
+    if (!arquivoEntrada.is_open()) {
+        cout << "Erro ao abrir o arquivo de entrada." << endl;
+        return 1;
     }
+
+    ofstream arquivoSaida("nomes_formatados.txt");
+    if (!arquivoSaida.is_open()) {
+        cout << "Erro ao criar o arquivo de saída." << endl;
+        return 1;
+    }
+
+    // Ler os nomes do arquivo de entrada e transformá-los
+    string nome;
+    while (getline(arquivoEntrada, nome)) {
+        // Transforma o nome no formato de citação bibliográfica
+        string nomeFormatado = transformarNome(nome);
+        // Escreve o nome formatado no arquivo de saída
+        arquivoSaida << nomeFormatado << endl;
+    }
+
+    arquivoEntrada.close();
+    arquivoSaida.close();
+
+    cout << "Nomes formatados com sucesso!" << endl;
 
     return 0;
 }
